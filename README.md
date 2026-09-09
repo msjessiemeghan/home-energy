@@ -1,4 +1,4 @@
-# Home Energy Roadmap
+# Home Energy Roadmap 
 
 A standalone, client-side tool: enter your home's characteristics, geography, current
 systems, and needs, and it builds a prioritized, budget-phased plan of which energy
