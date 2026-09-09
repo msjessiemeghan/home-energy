@@ -29,6 +29,42 @@ const ICONS = {
 };
 function iconFor(solId) { return ICONS[solId] || ICONS['solar-pv']; }
 
+// ---------- User selection & priority state (Stage 05) ----------
+let excludedByUser = new Set();  // solution ids the user unchecked
+let manualOrder = null;          // array of solution ids in user-chosen priority order, or null to use fit score
+let lastOrderedIds = [];         // the ordered ids from the most recent render, for up/down + priority numbers
+
+document.getElementById('roadmapOutput').addEventListener('click', (e) => {
+  const btn = e.target.closest('button[data-action]');
+  if (!btn) return;
+  reorder(btn.dataset.id, btn.dataset.action);
+});
+document.getElementById('roadmapOutput').addEventListener('change', (e) => {
+  const cb = e.target.closest('input[type="checkbox"][data-id]');
+  if (!cb) return;
+  toggleInclude(cb.dataset.id, cb.checked);
+});
+document.getElementById('resetRoadmapBtn').addEventListener('click', () => {
+  excludedByUser.clear();
+  manualOrder = null;
+  recompute();
+});
+
+function reorder(id, direction) {
+  if (!manualOrder) manualOrder = lastOrderedIds.slice();
+  const idx = manualOrder.indexOf(id);
+  if (idx === -1) return;
+  const target = direction === 'up' ? idx - 1 : idx + 1;
+  if (target < 0 || target >= manualOrder.length) return;
+  [manualOrder[idx], manualOrder[target]] = [manualOrder[target], manualOrder[idx]];
+  recompute();
+}
+
+function toggleInclude(id, checked) {
+  if (checked) excludedByUser.delete(id); else excludedByUser.add(id);
+  recompute();
+}
+
 // ---------- Live-value labels ----------
 const backupDaysNeeded = document.getElementById('backupDaysNeeded');
 const backupDaysValue = document.getElementById('backupDaysValue');
@@ -213,7 +249,7 @@ function estimateCost(sol, inputs) {
 }
 
 // ---------- Scoring + phase allocation ----------
-function buildRoadmap(inputs, totalBudgetAmt, phaseCount) {
+function buildRoadmap(inputs, totalBudgetAmt, phaseCount, excludedByUserSet, manualOrderArr) {
   const scored = [];
   const excluded = [];
 
@@ -236,7 +272,23 @@ function buildRoadmap(inputs, totalBudgetAmt, phaseCount) {
     }
   });
 
-  scored.sort((a, b) => b.score - a.score);
+  // split out anything the user explicitly unchecked
+  const userExcluded = scored.filter((e) => excludedByUserSet.has(e.sol.id));
+  const active = scored.filter((e) => !excludedByUserSet.has(e.sol.id));
+
+  // order: user's manual priority wins where set, fit score otherwise;
+  // anything newly-eligible that isn't in a manual order yet falls to the end, by score
+  if (manualOrderArr && manualOrderArr.length) {
+    const orderIndex = new Map(manualOrderArr.map((id, i) => [id, i]));
+    active.sort((a, b) => {
+      const ai = orderIndex.has(a.sol.id) ? orderIndex.get(a.sol.id) : Infinity;
+      const bi = orderIndex.has(b.sol.id) ? orderIndex.get(b.sol.id) : Infinity;
+      if (ai !== bi) return ai - bi;
+      return b.score - a.score;
+    });
+  } else {
+    active.sort((a, b) => b.score - a.score);
+  }
 
   const perPhase = Math.round(totalBudgetAmt / phaseCount);
   const phases = Array.from({ length: phaseCount }, (_, i) => ({
@@ -247,7 +299,7 @@ function buildRoadmap(inputs, totalBudgetAmt, phaseCount) {
   }));
   const unfunded = [];
 
-  scored.forEach((entry) => {
+  active.forEach((entry) => {
     let placed = false;
     for (const phase of phases) {
       if (entry.cost <= phase.remaining) {
@@ -260,7 +312,7 @@ function buildRoadmap(inputs, totalBudgetAmt, phaseCount) {
     if (!placed) unfunded.push(entry);
   });
 
-  return { phases, unfunded, excluded };
+  return { phases, unfunded, excluded, userExcluded };
 }
 
 function exclusionReason(sol, inputs) {
@@ -291,13 +343,16 @@ function recompute() {
   const budgetAmt = num('totalBudget');
   const phaseCount = Number(val('phaseCount'));
 
-  const { phases, unfunded, excluded } = buildRoadmap(inputs, budgetAmt, phaseCount);
+  const { phases, unfunded, excluded, userExcluded } = buildRoadmap(inputs, budgetAmt, phaseCount, excludedByUser, manualOrder);
+
+  lastOrderedIds = [...phases.flatMap((p) => p.items), ...unfunded].map((e) => e.sol.id);
+  const totalActive = lastOrderedIds.length;
 
   // Stats
   const fundedItems = phases.flatMap((p) => p.items);
   const totalCost = fundedItems.reduce((sum, e) => sum + e.cost, 0);
   const totalCO2 = fundedItems.reduce((sum, e) => sum + (e.sol.co2ReductionTons || 0), 0);
-  document.getElementById('statMatched').textContent = fundedItems.length + unfunded.length;
+  document.getElementById('statMatched').textContent = fundedItems.length + unfunded.length + userExcluded.length;
   document.getElementById('statCost').textContent = formatMoney(totalCost);
   document.getElementById('statPhases').textContent = phases.filter((p) => p.items.length).length;
   document.getElementById('statCO2').textContent = totalCO2.toFixed(1) + ' t';
@@ -317,7 +372,7 @@ function recompute() {
         <span class="phase-meta">${formatMoney(phaseCost)} of ${formatMoney(phase.budget)} budget</span>
       </div>
       <div class="phase-budget-bar"><div class="phase-budget-fill" style="width:${pct}%"></div></div>
-      ${phase.items.map(cardHtml).join('')}
+      ${phase.items.map((entry) => cardHtml(entry, cardMeta(entry, totalActive))).join('')}
     `;
     out.appendChild(el);
   });
@@ -326,14 +381,25 @@ function recompute() {
     const el = document.createElement('div');
     el.className = 'phase';
     el.innerHTML = `
-      <div class="phase-head"><h3>Beyond current budget</h3></div>
-      <p class="hint">Worth planning for once budget allows — highest-fit systems that didn't fit any phase above.</p>
-      ${unfunded.map(cardHtml).join('')}
+      <div class="phase-head"><h3>Beyond Current Budget</h3></div>
+      <p class="hint">Still part of your plan, just not funded by your current budget/phases — reorder to bring one forward.</p>
+      ${unfunded.map((entry) => cardHtml(entry, cardMeta(entry, totalActive))).join('')}
     `;
     out.appendChild(el);
   }
 
-  // Excluded note
+  if (userExcluded.length) {
+    const el = document.createElement('div');
+    el.className = 'phase';
+    el.innerHTML = `
+      <div class="phase-head"><h3>Not In Your Plan</h3></div>
+      <p class="hint">You unchecked these — tick the box to add one back in.</p>
+      ${userExcluded.map(notIncludedCardHtml).join('')}
+    `;
+    out.appendChild(el);
+  }
+
+  // Excluded note (infeasible for this home — not user-editable)
   const excludedNote = document.getElementById('excludedNote');
   if (excluded.length) {
     excludedNote.innerHTML = `<strong>Not shown above (doesn't currently fit your home):</strong><br>` +
@@ -355,7 +421,12 @@ function recompute() {
   });
 }
 
-function cardHtml(entry) {
+function cardMeta(entry, total) {
+  const idx = lastOrderedIds.indexOf(entry.sol.id);
+  return { priority: idx + 1, isFirst: idx <= 0, isLast: idx === total - 1 };
+}
+
+function cardHtml(entry, meta) {
   const s = entry.sol;
   return `
     <div class="card">
@@ -373,6 +444,37 @@ function cardHtml(entry) {
           <span>~${s.co2ReductionTons}t CO₂/yr</span>
           <span>Fit score ${entry.score}/100</span>
         </div>
+      </div>
+      <div class="card-controls">
+        <button type="button" class="pri-btn" data-action="up" data-id="${s.id}" ${meta.isFirst ? 'disabled' : ''} aria-label="Raise priority">▲</button>
+        <span class="pri-num">#${meta.priority}</span>
+        <button type="button" class="pri-btn" data-action="down" data-id="${s.id}" ${meta.isLast ? 'disabled' : ''} aria-label="Lower priority">▼</button>
+        <label class="include-toggle">
+          <input type="checkbox" data-id="${s.id}" checked />
+          Include
+        </label>
+      </div>
+    </div>
+  `;
+}
+
+function notIncludedCardHtml(entry) {
+  const s = entry.sol;
+  return `
+    <div class="card card-muted">
+      <div class="card-icon">${iconFor(s.id)}</div>
+      <div class="card-body">
+        <div class="card-head">
+          <div><h4>${s.name}</h4></div>
+          <div class="card-cost">${formatMoney(entry.cost)}</div>
+        </div>
+        <p class="blurb">${s.blurb}</p>
+      </div>
+      <div class="card-controls">
+        <label class="include-toggle">
+          <input type="checkbox" data-id="${s.id}" />
+          Include
+        </label>
       </div>
     </div>
   `;

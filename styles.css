@@ -430,6 +430,57 @@ button.primary:hover { background: var(--green-dark); }
   border-radius: var(--radius);
 }
 
+/* ---------- Card selection & priority controls ---------- */
+.card-controls {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  min-width: 58px;
+  padding-left: 12px;
+  border-left: 1px dashed var(--rule);
+}
+
+.pri-btn {
+  width: 28px;
+  height: 22px;
+  border: 1px solid var(--rule);
+  background: var(--surface);
+  border-radius: var(--radius);
+  cursor: pointer;
+  font-size: 10px;
+  line-height: 1;
+  color: var(--ink-muted);
+}
+.pri-btn:hover:not(:disabled) { background: var(--parchment); color: var(--green-dark); }
+.pri-btn:disabled { opacity: 0.25; cursor: not-allowed; }
+
+.pri-num {
+  font-family: var(--font-eyebrow);
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  color: var(--ink-faint);
+}
+
+.include-toggle {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-family: var(--font-eyebrow);
+  font-size: 10px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--ink-muted);
+  margin-top: 6px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.include-toggle input { accent-color: var(--green-dark); cursor: pointer; }
+
+.card-muted { opacity: 0.65; }
+.card-muted .card-icon { background: var(--rule); }
+.card-muted:hover { opacity: 0.9; }
+
 /* ---------- Footer ---------- */
 footer.foot {
   background: var(--black);
