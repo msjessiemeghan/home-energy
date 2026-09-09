@@ -68,15 +68,26 @@
     </div>
     <p class="stage-sub">Physical traits that decide what's even feasible to install — before cost enters the picture.</p>
 
-    <div class="grid-3">
-      <div class="field">
-        <label for="homeAge">Age of home</label>
-        <select id="homeAge">
-          <option value="pre-1980">Built before 1980</option>
-          <option value="1980-2000">Built 1980–2000</option>
-          <option value="2000-2015">Built 2000–2015</option>
-          <option value="post-2015">Built after 2015</option>
-        </select>
+    <div class="field-group">
+      <div class="field-group-title">Basics</div>
+      <div class="grid-3">
+        <div class="field">
+          <label for="homeAge">Age of home</label>
+          <select id="homeAge">
+            <option value="pre-1980">Built before 1980</option>
+            <option value="1980-2000">Built 1980–2000</option>
+            <option value="2000-2015">Built 2000–2015</option>
+            <option value="post-2015">Built after 2015</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="homeSqft">Home size (sq ft)</label>
+          <input type="number" id="homeSqft" value="2000" min="200" />
+        </div>
+        <div class="field">
+          <label for="householdSize">People in household</label>
+          <input type="number" id="householdSize" value="3" min="1" max="12" />
+        </div>
       </div>
       <div class="field">
         <label for="insulationUpdated">Insulation updated since original build?</label>
@@ -86,65 +97,83 @@
           <option value="no">No, original</option>
         </select>
       </div>
-      <div class="field">
-        <label for="householdSize">People in household</label>
-        <input type="number" id="householdSize" value="3" min="1" max="12" />
+    </div>
+
+    <div class="field-group">
+      <div class="field-group-title">Roof</div>
+      <div class="grid-2">
+        <div class="field">
+          <label for="roofSizeSqft">Usable roof area (sq ft)</label>
+          <input type="number" id="roofSizeSqft" value="800" min="0" />
+          <div class="hint">Rough is fine — south/west-facing, unshaded area.</div>
+        </div>
+        <div class="field">
+          <label for="roofCondition">Roof condition</label>
+          <select id="roofCondition">
+            <option value="new">New / recently replaced</option>
+            <option value="good" selected>Good</option>
+            <option value="fair">Fair</option>
+            <option value="needs-replacement">Needs replacement soon</option>
+          </select>
+        </div>
       </div>
     </div>
 
-    <div class="grid-3">
-      <div class="field">
-        <label for="homeSqft">Home size (sq ft)</label>
-        <input type="number" id="homeSqft" value="2000" min="200" />
+    <div class="field-group">
+      <div class="field-group-title">Land &amp; Site</div>
+      <div class="grid-3">
+        <div class="field">
+          <label for="hasWell">Well on the property?</label>
+          <select id="hasWell">
+            <option value="no">No</option>
+            <option value="yes">Yes</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="landAvailable">Land available (loops, turbines, wood storage)</label>
+          <select id="landAvailable">
+            <option value="none">Little to none</option>
+            <option value="small">Some (small yard)</option>
+            <option value="large">Ample (acreage)</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="hasChimney">Existing chimney or flue?</label>
+          <select id="hasChimney">
+            <option value="no">No</option>
+            <option value="yes">Yes</option>
+          </select>
+        </div>
       </div>
       <div class="field">
-        <label for="roofSizeSqft">Usable roof area (sq ft)</label>
-        <input type="number" id="roofSizeSqft" value="800" min="0" />
-        <div class="hint">Rough is fine — south/west-facing, unshaded area.</div>
-      </div>
-      <div class="field">
-        <label for="roofCondition">Roof condition</label>
-        <select id="roofCondition">
-          <option value="new">New / recently replaced</option>
-          <option value="good" selected>Good</option>
-          <option value="fair">Fair</option>
-          <option value="needs-replacement">Needs replacement soon</option>
+        <label for="woodAccess">Access to wood (for a wood/pellet stove)</label>
+        <select id="woodAccess">
+          <option value="none">No easy access</option>
+          <option value="cheap-local">Affordable local supply</option>
+          <option value="own-land">Have my own woodlot / land</option>
         </select>
       </div>
     </div>
 
-    <div class="grid-3">
-      <div class="field">
-        <label for="hasWell">Well on the property?</label>
-        <select id="hasWell">
-          <option value="no">No</option>
-          <option value="yes">Yes</option>
-        </select>
+    <div class="field-group">
+      <div class="field-group-title">Current Energy Systems</div>
+      <div class="field-group-desc">Anything you already have installed, so the roadmap builds on it instead of duplicating it.</div>
+      <div class="grid-2">
+        <div class="field">
+          <label for="existingSolarKw">Existing solar array size (kW), if any</label>
+          <input type="number" id="existingSolarKw" value="0" min="0" step="0.5" />
+          <div class="hint">e.g. a 9 kW array — enter 9. Leave 0 if none.</div>
+        </div>
+        <div class="field">
+          <label for="existingBatteryKwh">Existing battery storage (kWh), if any</label>
+          <input type="number" id="existingBatteryKwh" value="0" min="0" step="1" />
+        </div>
       </div>
       <div class="field">
-        <label for="landAvailable">Land available (for loops, turbines, wood storage)</label>
-        <select id="landAvailable">
-          <option value="none">Little to none</option>
-          <option value="small">Some (small yard)</option>
-          <option value="large">Ample (acreage)</option>
-        </select>
+        <label for="existingWoodStoveBtu">Existing wood/pellet stove rating (BTU), if any</label>
+        <input type="number" id="existingWoodStoveBtu" value="0" min="0" step="1000" />
+        <div class="hint">e.g. a 15,000 BTU stove — enter 15000. Leave 0 if none.</div>
       </div>
-      <div class="field">
-        <label for="hasChimney">Existing chimney or flue?</label>
-        <select id="hasChimney">
-          <option value="no">No</option>
-          <option value="yes">Yes</option>
-        </select>
-      </div>
-    </div>
-
-    <div class="field">
-      <label for="woodAccess">Access to wood (for a wood/pellet stove)</label>
-      <select id="woodAccess">
-        <option value="none">No easy access</option>
-        <option value="cheap-local">Affordable local supply</option>
-        <option value="own-land">Have my own woodlot / land</option>
-      </select>
     </div>
   </section>
 
@@ -212,6 +241,21 @@
           <option value="geothermal">Already have geothermal</option>
         </select>
       </div>
+      <div class="field">
+        <label for="secondaryHeat">Secondary/supplemental heating fuel, if any</label>
+        <select id="secondaryHeat">
+          <option value="none">None</option>
+          <option value="natural-gas">Natural gas</option>
+          <option value="oil">Oil</option>
+          <option value="propane">Propane</option>
+          <option value="coal">Coal (legacy system)</option>
+          <option value="wood">Wood</option>
+          <option value="electric-resistance">Electric resistance (baseboard/space heaters)</option>
+        </select>
+        <div class="hint">Common in older homes — e.g. a wood stove backing up an oil furnace.</div>
+      </div>
+    </div>
+    <div class="grid-2">
       <div class="field">
         <label for="currentWaterHeat">Current water heater</label>
         <select id="currentWaterHeat">

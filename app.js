@@ -168,10 +168,14 @@ function gatherInputs() {
     landAvailable: val('landAvailable'),
     hasChimney: boolVal('hasChimney'),
     woodAccess: val('woodAccess'),
+    existingSolarKw: num('existingSolarKw'),
+    existingBatteryKwh: num('existingBatteryKwh'),
+    existingWoodStoveBtu: num('existingWoodStoveBtu'),
     sunlightHours: val('sunlightHours'),
     avgWindSpeed: num('avgWindSpeed'),
     climate: val('climate'),
     currentHeat: val('currentHeat'),
+    secondaryHeat: val('secondaryHeat'),
     currentWaterHeat: val('currentWaterHeat'),
     annualKwh: annualKwh || 10500, // US household average fallback, EIA
     wantsEV: needsState.wantsEV,
@@ -187,16 +191,18 @@ function gatherInputs() {
 // ---------- Cost estimation for variable-unit solutions ----------
 function estimateCost(sol, inputs) {
   if (sol.id === 'solar-pv') {
-    let kw = Math.min(Math.max(inputs.annualKwh / 1200, 3), 14);
-    if (inputs.wantsEV) kw += 2;
-    if (inputs.electrifyingHeat) kw += 3;
+    let targetKw = Math.min(Math.max(inputs.annualKwh / 1200, 3), 14);
+    if (inputs.wantsEV) targetKw += 2;
+    if (inputs.electrifyingHeat) targetKw += 3;
+    const additionalKw = Math.max(targetKw - (inputs.existingSolarKw || 0), 0);
     const perWatt = (sol.costRange[0] + sol.costRange[1]) / 2;
-    return Math.round(kw * 1000 * perWatt);
+    return Math.round(additionalKw * 1000 * perWatt);
   }
   if (sol.id === 'battery-storage') {
-    const kwh = Math.min(Math.max(inputs.backupDaysNeeded * 7, 5), 40);
+    const targetKwh = Math.min(Math.max(inputs.backupDaysNeeded * 7, 5), 40);
+    const additionalKwh = Math.max(targetKwh - (inputs.existingBatteryKwh || 0), 0);
     const perKwh = (sol.costRange[0] + sol.costRange[1]) / 2;
-    return Math.round(kwh * perKwh);
+    return Math.round(additionalKwh * perKwh);
   }
   if (sol.id === 'ev-charger') {
     let mid = (sol.costRange[0] + sol.costRange[1]) / 2;
@@ -259,12 +265,17 @@ function buildRoadmap(inputs, totalBudgetAmt, phaseCount) {
 
 function exclusionReason(sol, inputs) {
   switch (sol.id) {
-    case 'solar-pv': return 'Needs more usable roof area or better sun exposure.';
+    case 'solar-pv': return inputs.existingSolarKw > 0
+      ? 'Your existing array already covers your estimated needs.'
+      : 'Needs more usable roof area or better sun exposure.';
     case 'solar-thermal': return 'Needs more usable roof area or better sun exposure.';
     case 'geothermal-hp': return 'Needs a well or available land for the ground loop.';
     case 'heat-pump-water-heater': return 'You already have one.';
+    case 'battery-storage': return 'Your existing battery already covers the backup duration you asked for.';
     case 'ev-charger': return 'Only relevant if you\'re planning to get an EV — toggle that under Needs.';
-    case 'wood-pellet-stove': return 'Needs an existing chimney/flue, or wood heat already in use.';
+    case 'wood-pellet-stove': return inputs.existingWoodStoveBtu > 0
+      ? 'You already have a wood/pellet stove installed.'
+      : 'Needs an existing chimney/flue, or wood heat already in use.';
     case 'small-wind': return 'Needs both meaningful land and an average wind speed of at least ~10 mph.';
     default: return 'Doesn\'t currently fit your profile.';
   }

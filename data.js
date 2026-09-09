@@ -56,7 +56,10 @@ const SOLUTIONS = [
     co2ReductionTons: 3.5,
     confidence: 'sourced',
     source: { name: 'EnergySage / LBNL Tracking the Sun, 2026', url: 'https://www.solar.com/learn/solar-panel-cost/' },
-    prerequisite: (inputs) => inputs.roofSizeSqft > 200 && inputs.sunlightHours !== 'low',
+    prerequisite: (inputs) => {
+      const targetKw = Math.min(Math.max(inputs.annualKwh / 1200, 3), 14);
+      return inputs.roofSizeSqft > 200 && inputs.sunlightHours !== 'low' && (inputs.existingSolarKw || 0) < targetKw;
+    },
     scoreFactors: (inputs) => {
       let score = 30;
       if (inputs.sunlightHours === 'high') score += 40;
@@ -127,6 +130,7 @@ const SOLUTIONS = [
       let score = 25;
       if (inputs.currentHeat === 'oil' || inputs.currentHeat === 'propane' || inputs.currentHeat === 'coal') score += 25;
       if (inputs.currentHeat === 'electric-resistance') score += 20;
+      if (inputs.secondaryHeat === 'oil' || inputs.secondaryHeat === 'propane' || inputs.secondaryHeat === 'coal') score += 10;
       if (inputs.climate !== 'cold') score += 15;
       if (!inputs.hasWell && inputs.landAvailable === 'none') score += 15; // fills the gap where geothermal isn't viable
       return Math.min(score, 100);
@@ -163,7 +167,10 @@ const SOLUTIONS = [
     co2ReductionTons: 0.2,
     confidence: 'sourced',
     source: { name: 'Avepower / Solar Price List, 2026', url: 'https://avebattery.com/blog/home-battery-storage-costs/' },
-    prerequisite: (inputs) => true,
+    prerequisite: (inputs) => {
+      const targetKwh = Math.min(Math.max(inputs.backupDaysNeeded * 7, 5), 40);
+      return (inputs.existingBatteryKwh || 0) < targetKwh;
+    },
     scoreFactors: (inputs) => {
       let score = 10;
       if (inputs.backupDaysNeeded >= 3) score += 40;
@@ -204,12 +211,13 @@ const SOLUTIONS = [
     co2ReductionTons: 0.3,
     confidence: 'estimate',
     source: { name: 'EPA Certified Wood Stove guidance', url: 'https://www.epa.gov/burnwise' },
-    prerequisite: (inputs) => inputs.hasChimney || inputs.currentHeat === 'wood',
+    prerequisite: (inputs) => (inputs.existingWoodStoveBtu || 0) === 0 && (inputs.hasChimney || inputs.currentHeat === 'wood'),
     scoreFactors: (inputs) => {
       let score = 15;
       if (inputs.woodAccess === 'own-land' || inputs.woodAccess === 'cheap-local') score += 30;
       if (inputs.hasChimney) score += 20;
       if (inputs.backupDaysNeeded >= 3) score += 15; // heat resilience during outages
+      if (inputs.secondaryHeat === 'wood') score += 15; // already relying on wood as backup
       return Math.min(score, 100);
     },
   },
